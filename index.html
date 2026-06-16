@@ -398,7 +398,14 @@ function fmtG(g){if(g>=1000)return (g/1000).toFixed(3).replace(/\.?0+$/,'')+'kg'
 function fmtKg(g){return (g/1000).toFixed(4).replace(/\.?0+$/,'')+'kg';}
 function fmtD(ts){var d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
 function ss(st,msg){var d=document.getElementById('sdot'),l=document.getElementById('slbl');d.className='sdot '+st;l.textContent=msg;}
-function imap(){var m={};(DB.ingredients||[]).forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});return m;}
+function imap(){
+  var m={};
+  // Start with hardcoded MATRIX as baseline
+  MATRIX.forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});
+  // Override / extend with DB.ingredients (user data takes precedence)
+  (DB.ingredients||[]).forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});
+  return m;
+}
 function inames(){return Object.keys(imap()).sort();}
 var LOWRISK=['low risk','dosing error','watery and flat','barely extracts'];
 function islr(s){var sl=s.toLowerCase();return LOWRISK.some(function(p){return sl.indexOf(p)!==-1;});}
@@ -548,6 +555,29 @@ function rrender(){
         bfxOvc.forEach(function(s){h+='<button class="sym ov'+(bfxSymType==="ov"&&bfxSymId===s.id?' on':'')+'" data-bft="ov" data-bfid="'+esc(s.id)+'">'+esc(s.label)+'</button>';});
         h+='</div></div>';
       }
+
+      // ── INGREDIENT NOTES ──
+      var notes=[];
+      Object.keys(bfxSel).forEach(function(n){
+        var nlist=ING_NOTES[n];
+        if(nlist)nlist.forEach(function(note){notes.push({ing:n,type:note.type,text:note.text});});
+      });
+      if(notes.length){
+        h+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:7px;">Ingredient notes</div>';
+        h+=notes.map(function(n){
+          var border=n.type==='risk'?'#E8312A':n.type==='decision'?'#c8a86e':'#378ADD';
+          var label=n.type==='risk'?'Risk':n.type==='decision'?'Decision':'Science';
+          return '<div style="border-left:3px solid '+border+';padding:9px 12px;margin-bottom:8px;background:#fafaf8;">'+
+            '<div style="display:flex;gap:8px;align-items:center;margin-bottom:5px;">'+
+            '<span style="font-size:10px;font-weight:700;color:'+border+';">'+label+'</span>'+
+            '<span style="font-size:11px;font-weight:700;color:#333;">'+esc(n.ing)+'</span>'+
+            '</div>'+
+            '<div style="font-size:11px;color:#444;line-height:1.6;">'+esc(n.text)+'</div>'+
+          '</div>';
+        }).join('');
+        h+='</div>';
+      }
+
       el.innerHTML=h;
     }
 
@@ -915,6 +945,79 @@ document.getElementById('bclr').addEventListener('click',function(){LAYERS.forEa
 
 // ── TAB 3: FIXER ──
 // ── SYMPTOM DEFINITIONS (shared) ──
+
+// ── INGREDIENT NOTES ──
+// Flavour science flags shown automatically based on what's in the recipe
+var ING_NOTES = {
+  "Ginger (dry)": [
+    {type:"decision", text:"Dry ginger at hot extraction produces shogaol — harsh, dry, persistent heat. Cold or fresh ginger gives gingerol instead — brighter, more citrus-forward, cleaner. If the recipe wants a sharp heat spike, dry hot is right. If it wants warmth, reconsider."}
+  ],
+  "Ginger (fresh)": [
+    {type:"science", text:"Fresh ginger cold-brewed preserves gingerol — fresh citrus-bright heat that dissipates cleanly. Hot extraction converts gingerol to shogaol — harsher and more persistent. Cold brew preferred for delicate recipes."}
+  ],
+  "Hibiscus": [
+    {type:"risk", text:"Hibiscus over-extracts faster than almost any ingredient. Tannin astringency builds sharply past optimal steep time. Hot extraction at 80°C for 20–25 min maximum. Check for leathery grip on inner cheeks — that's the tannin threshold."},
+    {type:"decision", text:"Hot extraction destroys most of the floral volatile compounds. If you want hibiscus aroma at layer 1 as well as acid at layer 2, consider cold-brewing a portion (10–15%) separately and blending in."}
+  ],
+  "Star anise": [
+    {type:"risk", text:"Star anise creates a double-anise moment — anethole hits at aroma (layer 1) and returns strongly at finish (layer 6). At doses above 0.75g/L the finish becomes medicinal. Check whether the persistence at finish is intended or cloying."}
+  ],
+  "Oolong": [
+    {type:"science", text:"Oolong cold-brewed preserves L-theanine (floral sweetness, umami) with minimal tannin. Hot extraction shifts the character toward tannin bitterness and loses the delicate floral. Cold brew is the correct method for Oolong in a champagne-style brief."}
+  ],
+  "Kombu (cold brew)": [
+    {type:"science", text:"Kombu cold brew at 2°C / 12h extracts glutamate umami and mineral salinity without alginate over-extraction. It fills finish and aftertaste layers cleanly. Replaces Himalayan salt while adding depth — the umami effect amplifies surrounding flavours rather than just adding salt."}
+  ],
+  "Mustard seeds": [
+    {type:"decision", text:"Mustard seeds cold-brewed give savoury umami and sharp acid at mid palate, with nasal pungency from isothiocyanate at layer 5. Hot extraction makes the nasal heat harsh and difficult to control. Decision pending: whether mustard pungency conflicts with a champagne brief — if so, remove."}
+  ],
+  "Green Sichuan pepper": [
+    {type:"science", text:"Green Sichuan sanshool activates touch receptors (TRPV1 / KCNK channels) — not taste receptors. The tingle is independent of all five tastes. Hot extraction and N2O both amplify sanshool significantly over cold. N2O used intentionally here for maximum tingle at layer 5."}
+  ],
+  "Red Sichuan pepper": [
+    {type:"science", text:"Red Sichuan gives mandarin-citrus aroma and a slightly softer numbing tingle than green. Used in combination with green, the two create a layered sanshool effect with different aroma characters."}
+  ],
+  "Pu-erh tea": [
+    {type:"science", text:"Pu-erh hot extraction gives tannin bitterness at late palate, fermented umami at finish, and the hui gan effect — a returning sweetness in the aftertaste. Cold brew extracts primarily umami without the tannin. Choose based on whether late palate bitterness is wanted."}
+  ],
+  "Chamomile": [
+    {type:"science", text:"Chamomile cold brew at 2°C / 4h extracts apple-floral volatiles without the medicinal apigenin compounds that over-extract hot. Even small doses (0.3–0.5g/L) deliver a clear aroma top note. Hot extraction at any dose risks hay-medicine character."}
+  ],
+  "Coriander seeds": [
+    {type:"decision", text:"Recipe uses coriander seeds (not leaf). Seeds give warm citrus-spice sweetness at aroma and mid palate — gentler than leaf. Leaf gives citrus-soapy brightness but is divisive and soapy if over-extracted hot. Seeds confirmed as the correct ingredient here."}
+  ],
+  "Coriander (leaf)": [
+    {type:"risk", text:"Coriander leaf is highly volatile — the citrus-soapy character degrades quickly at hot extraction. Cold brew strongly preferred. At hot 80c, bitter green note dominates and soapy edge persists. This is the most common unexpected off-note in botanical drinks."}
+  ],
+  "Beet (dry)": [
+    {type:"risk", text:"Beet contains geosmin — the compound responsible for the damp earth / soil note. It's detectable at incredibly low concentrations. Hot extraction fully releases geosmin. Cold brew is gentler but still builds slowly. Monitor finish carefully — geosmin tips to 'damp basement' faster than any other compound."}
+  ],
+  "Oakwood (whisky barrel chips)": [
+    {type:"science", text:"CO₂ extraction at low temperature pulls vanillin sweetness and light smoke while leaving most tannin behind. Hot extraction or long steeps release tannin phenols quickly, creating over-oaked harshness. The CO₂ method used here is specifically chosen to add oak character at finish without tannin load at late palate."}
+  ],
+  "Kombu cold brew": [
+    {type:"science", text:"See Kombu (cold brew)."}
+  ],
+  "Roasted barley": [
+    {type:"science", text:"Roasted barley cold-brewed gives Maillard-derived malt sweetness at mid palate and brioche/champagne-yeast aroma at layer 1. The roast bitterness is minimal cold. Hot extraction shifts character toward stale bread and coffee bitterness. Cold brew is the correct method for a champagne brief."}
+  ],
+  "Liquorice root": [
+    {type:"risk", text:"Glycyrrhizin (the sweetness compound in liquorice) is very slow to clear and returns in the aftertaste. At doses above 4g/L it creates a toothpaste-like persistent coating. The anise sweetness at finish is a strength of Wiry, but watch for the persistence tipping from pleasant to cloying."}
+  ],
+  "Kaffir lime leaf": [
+    {type:"science", text:"Kaffir lime cold brew preserves the citrus volatile oils without extracting resinous bitterness. Hot extraction causes the citrus to turn soapy and the resin to dominate. Cold brew is essential for this ingredient in any delicate recipe."}
+  ],
+  "Malic acid": [
+    {type:"science", text:"Malic acid gives a tart apple / green fruit acidity — softer and more rounded than citric. Dissolve fully before adding to brew. At doses above 1g/L the sides of the tongue experience pain rather than pleasant sourness. The threshold is narrow."}
+  ],
+  "Assam tea": [
+    {type:"science", text:"Assam extracted hot gives malty tannin bitterness at late palate with deep umami. Cold brew gives almost pure umami with minimal tannin — a very different character. Check which layer you need it to fill before choosing extraction method."}
+  ],
+  "Ceylon tea": [
+    {type:"science", text:"Ceylon gives bright citrus-edge acid at attack and brisk tannin at late palate. The 3-minute separate steep at 90°C is specifically timed to capture the acid brightness without extracting the heavier tannin compounds. Longer steeps tip into astringency."}
+  ]
+};
+
 var STDSYMS=[
   {id:"too-sour",label:"Too sour",gloss:"Sharp painful acidity on the sides of your tongue. Saliva floods. Sourness dominates everything.",what:"Acid dominant. Too much acidic ingredient or over-extraction.",fix:["Add salt first — suppresses perceived acidity","Then a touch of sweet — rounds the remaining edge","Dilute with neutral base if both at limit"],ct:"sweet",ct2:"salty",ca:"sour"},
   {id:"too-bitter",label:"Too bitter",gloss:"Dry coating on the back of your tongue that lingers after swallowing. Like over-steeped black tea.",what:"Bitter compounds dominant. Tannins, phenols, or resinous compounds from over-extraction.",fix:["Salt first — most direct suppressor of bitterness","Then sweet — rounds what salt doesn't suppress","Dilute if both maxed out"],ct:"sweet",ct2:"salty",ca:"bitter"},
@@ -957,6 +1060,35 @@ function prend(){
     h+='<div class="pcard"><div class="phdr"><div class="pnm">'+esc(p.name)+'</div><span class="ppri '+(p.priority==='primary'?'pr':'sc')+'">'+p.priority+'</span></div><div class="pdesc">'+esc(p.desc)+'</div>'+(p.tastes.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px;">'+p.tastes.map(function(t){return '<span class="'+(pm[t]||'')+'">'+t+'</span>';}).join('')+'</div>':'')+(p.rule?'<div class="prule">'+esc(p.rule)+'</div>':'')+'</div>';
   });
   res.innerHTML=h;
+
+  // Show Save as Brief section
+  var bsa=document.getElementById('brief-save-area');
+  if(bsa){
+    bsa.style.display='block';
+    bsa.innerHTML=
+      '<hr style="border:none;border-top:1.5px solid #e8e6e0;margin:16px 0 12px;">'+
+      '<span class="lbl">Save as brief</span>'+
+      '<input type="text" id="brief-name-input" placeholder="Brief name e.g. Midsummer Herring" style="margin-bottom:8px;">'+
+      '<textarea id="brief-desc-input" placeholder="Description \u2014 what are you trying to achieve?" style="min-height:70px;margin-bottom:10px;"></textarea>'+
+      '<button class="btn dark" id="brief-save-btn">Save brief \u2192</button>';
+    document.getElementById('brief-save-btn').addEventListener('click',function(){
+      var name=document.getElementById('brief-name-input').value.trim();
+      if(!name){alert('Please give the brief a name.');return;}
+      var desc=document.getElementById('brief-desc-input').value.trim();
+      var key=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+      if(!DB.briefs)DB.briefs={};
+      DB.briefs[key]={
+        name:name,
+        desc:desc,
+        created:Date.now(),
+        pairing:{protein:pst.protein,method:pst.method,fat:pst.fat,dominant:pst.dominant,heat:pst.heat},
+        profiles:data.profiles,
+        warns:data.warns
+      };
+      saveDB();
+      bsa.innerHTML='<div style="font-size:12px;color:#1D9E75;padding:10px 0;font-family:Space Mono,monospace;">✓ Brief “'+esc(name)+'” saved. Load it in the Builder tab.</div>';
+    });
+  }
 }
 
 function pprofiles(){
