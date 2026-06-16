@@ -400,8 +400,8 @@ function fmtD(ts){var d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'2
 function ss(st,msg){var d=document.getElementById('sdot'),l=document.getElementById('slbl');d.className='sdot '+st;l.textContent=msg;}
 function imap(){
   var m={};
-  // Start with hardcoded MATRIX as baseline
-  MATRIX.forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});
+  // Start with hardcoded ingredient data (DING) as baseline
+  DING.forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});
   // Override / extend with DB.ingredients (user data takes precedence)
   (DB.ingredients||[]).forEach(function(r){if(!m[r[0]])m[r[0]]={name:r[0],rows:[]};m[r[0]].rows.push({name:r[0],ext:r[1],sw:r[2],so:r[3],sa:r[4],bi:r[5],um:r[6],overSign:r[7],overFeel:r[8],layers:r[9]||[]});});
   return m;
@@ -1049,7 +1049,7 @@ function prend(){
   var res=document.getElementById('pres');
   if(!PSELS.every(function(g){return pst[g.key]!==null;})){
     var f=Object.values(pst).filter(Boolean).length;
-    res.innerHTML='<div class="empty">'+(f===0?'Select all five variables above.':(5-f)+' more selection'+(5-f>1?'s':'')+' needed.')+'</div>';return;
+    res.innerHTML='<div class="empty">'+(f===0?'Select all five variables above.':(5-f)+' more selection'+(5-f>1?'s':'')+' needed.')+'</div>';var _b=document.getElementById('brief-save-area');if(_b)_b.style.display='none';return;
   }
   var data=pprofiles();
   var lbls={};PSELS.forEach(function(g){g.opts.forEach(function(o){lbls[o.v]=o.l;});});
@@ -1070,7 +1070,7 @@ function prend(){
       '<span class="lbl">Save as brief</span>'+
       '<input type="text" id="brief-name-input" placeholder="Brief name e.g. Midsummer Herring" style="margin-bottom:8px;">'+
       '<textarea id="brief-desc-input" placeholder="Description \u2014 what are you trying to achieve?" style="min-height:70px;margin-bottom:10px;"></textarea>'+
-      '<button class="btn dark" id="brief-save-btn">Save brief \u2192</button>';
+      '<button class="btn dark" id="brief-save-btn" style="width:100%;margin-top:4px;">Save brief →</button>';
     document.getElementById('brief-save-btn').addEventListener('click',function(){
       var name=document.getElementById('brief-name-input').value.trim();
       if(!name){alert('Please give the brief a name.');return;}
@@ -1627,9 +1627,12 @@ function drawRadar(drink){
     });
   });
 
-  // Normalise
+  // Normalise with minimum floor so small-but-real values stay visible
   var mx=Math.max.apply(null,scores)||1;
-  var vals=scores.map(function(s){return s/mx;});
+  var vals=scores.map(function(s){
+    if(s===0)return 0;
+    return Math.max(s/mx, 0.12); // floor at 12% so any present layer shows
+  });
 
   var ctx=canvas.getContext('2d');
   var W=canvas.width,H=canvas.height;
@@ -1688,14 +1691,6 @@ function drawRadar(drink){
     ctx.fillText(lbl,lx,ly+4);
   });
 
-  // Gap markers
-  ctx.fillStyle='#E8312A';ctx.font='bold 9px monospace';
-  vals.forEach(function(v,i){
-    if(v<0.01){
-      var a=-(Math.PI/2)+(2*Math.PI*i/N);
-      ctx.fillText('!',cx+(R+12)*Math.cos(a),cy+(R+12)*Math.sin(a)+3);
-    }
-  });
 }
 
 function drawRadar2(drink){
@@ -1722,7 +1717,10 @@ function drawRadar2(drink){
     });
   });
   var mx=Math.max(scores.sw,scores.so,scores.sa,scores.bi,scores.um,scores.pungent)||1;
-  var vals=axes.map(function(a){return scores[a]/mx;});
+  var vals=axes.map(function(a){
+    if(scores[a]===0)return 0;
+    return Math.max(scores[a]/mx, 0.12);
+  });
   var ctx=canvas.getContext('2d');
   var W=canvas.width,H=canvas.height;
   ctx.clearRect(0,0,W,H);
