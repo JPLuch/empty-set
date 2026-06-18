@@ -195,6 +195,7 @@ canvas#radar{display:block;margin:0 auto;}
     <button onclick="if(confirm('Reset all data to defaults?')){DB.recipes=DREC;DB.ingredients=DING;DB.brew_logs={antic:[],camp:[],lit:[],wiry:[]};saveDB();initAll();}" style="font-family:'Space Mono',monospace;font-size:9px;color:#ccc;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">Reset</button>
     <span class="sdot spin" id="sdot"></span>
     <span class="slbl" id="slbl">Connecting...</span>
+    <button onclick="exportDB()" style="font-size:9px;color:#ccc;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;margin-left:8px;">&#8595; Backup</button>
   </div>
 </div>
 <div class="tabs">
@@ -291,7 +292,14 @@ canvas#radar{display:block;margin:0 auto;}
   </div>
   <div class="card fopen" id="iform">
     <div class="fsec"><div class="fsect">Basic info</div>
-      <div class="irow"><label style="font-size:11px;color:#888;min-width:70px;">Name</label><input type="text" id="ifname" placeholder="e.g. Chamomile"></div>
+      <div class="irow"><label style="font-size:11px;color:#888;min-width:70px;">Name</label><input type="text" id="ifname" placeholder="e.g. Chrysanthemum (dry)"></div>
+      <div class="irow" style="align-items:flex-start;">
+        <label style="font-size:11px;color:#888;min-width:70px;padding-top:6px;">AI lookup</label>
+        <div style="flex:1;">
+          <button class="btn dark sm" id="ai-ing-btn" style="margin-bottom:8px;width:100%;">&#10024; Research ingredient</button>
+          <div id="ai-ing-status" style="font-size:11px;color:#aaa;font-family:Space Mono,monospace;display:none;"></div>
+        </div>
+      </div>
       <div class="irow"><label style="font-size:11px;color:#888;min-width:70px;">Extraction</label>
         <select id="ifext"><option value="Hot 80c">Hot 80c</option><option value="Cold">Cold</option><option value="N2O">N2O</option></select>
       </div>
@@ -416,7 +424,7 @@ var DREC={
     steps:[{n:1,d:"Hot brew 80°C / 30 min (curve down ~60°C)",i:[{name:"Hibiscus",g:7},{name:"Green Sichuan pepper",g:0.8},{name:"Red Sichuan pepper",g:0.8},{name:"Liquorice root",g:3},{name:"Pu-erh tea",g:4}]},{n:2,d:"Cold brew Chamomile 2°C / 4 hours",i:[{name:"Chamomile",g:0.4}]},{n:3,d:"Cool hot steep to 2°C",i:[]},{n:4,d:"Add salt",i:[{name:"Himalayan salt",g:0.3}]},{n:5,d:"Blend — 90% hot / 10% chamomile",i:[]},{n:6,d:"Filtrate (0.45μm)",i:[]},{n:7,d:"Carbonate at 1.2 Bar",i:[]}]}
 };
 
-var DING=[["Celeriac","Hot 80c",1,0,0,1,1,"Bitterness turns sharp and medicinal","Dry bitter coating on back of tongue",[]],["Turmeric","Hot 80c",0,0,0,1,1,"Resin and medicinal bitterness dominate","Intense dry mouth coating",[4,6]],["Turmeric","Cold",0,0,0,1,0,"Mild bitterness increases slowly","Lingering dry bitterness",[4]],["Kombu (cold brew)","Cold",0,0,1,0,1,"Umami becomes flat and repetitive","Saline heaviness, palate fatigue",[3,6]],["Ceylon tea","Hot 80c",0,1,0,1,0,"Tannin overload — heavy astringency","Dry leathery grip all over mouth",[2,4]],["Ceylon tea","N2O",0,1,0,1,0,"Tannin and acid both sharpen","Dry astringent grip",[2,4]],["Kaffir lime leaf","Hot 80c",0,1,0,1,0,"Resinous bitterness dominates and citrus turns soapy","Soapy-resinous sensation",[1,2]],["Kaffir lime leaf","Cold",0,1,0,0,0,"Citrus turns soapy if overdosed","Faint soapy acidity",[1,2]],["Orange peel (dry)","Hot 80c",1,1,0,1,0,"Pith bitterness dominates","Harsh dry bitter coating",[1,2,4]],["Ginger (dry)","Hot 80c",0,0,0,1,0,"Shogaol dominant — harsh dry heat","Burning dry heat",[5]],["Green cardamom","Hot 80c",1,0,0,1,0,"Camphor and resin become medicinal","Eucalyptus-camphor overload",[1,3]],["Green cardamom","Cold",1,0,0,0,0,"Low risk cold","Faint floral sweetness",[1,3]],["Red pepper","Hot 80c",1,0,0,1,0,"Vegetal bitterness","Stewed pepper note",[3]],["Malic acid","Hot 80c",0,1,0,0,0,"Excessive sharp acidity","Sour pain on sides of tongue",[2]],["Malic acid","Cold",0,1,0,0,0,"Painful acidity","Same painful acidity",[2]],["Glycerine","Hot 80c",1,0,0,0,0,"Cloying viscous sweetness","Thick coating sweetness",[3]],["Assam tea","Hot 80c",0,0,0,1,1,"Heavy tannin astringency and umami fatigue","Dry leathery grip",[4,6]],["Assam tea","Cold",0,0,0,0,1,"Umami becomes flat","Palate fatigue",[6]],["Pu-erh tea","Hot 80c",1,0,0,1,1,"Fermented earthiness turns rank","Damp basement note",[4,6,7]],["Pu-erh tea","Cold",1,0,0,0,1,"Umami flatness","One-dimensional earthiness",[6,7]],["Beet (dry)","Hot 80c",1,0,0,0,1,"Concentrated geosmin overwhelming","Intense earthy-sweet",[3,6]],["Black pepper","Hot 80c",0,0,0,1,0,"Piperine overload","Burning dry sensation",[4,5]],["Coriander seeds","Hot 80c",1,0,0,1,0,"Citrus turns soapy","Soapy-resinous coating",[1,3]],["Coriander seeds","Cold",1,0,0,0,0,"Faint citrus if overdosed","Faint citrus sweetness",[1,3]],["Star anise","Hot 80c",1,0,0,1,0,"Anethole overload — anise becomes medicinal","Cough-syrup sensation",[1,6]],["Oakwood (whisky barrel chips)","Hot 80c",1,0,0,1,1,"Tannin astringency and bitter phenols dominate","Dry leathery grip",[3,4,6]],["Oakwood (whisky barrel chips)","N2O",1,0,0,1,1,"Tannin and bitter phenols over-extract","Dry astringent grip",[3,4,6]],["Gum arabic","Hot 80c",0,0,0,0,0,"Texture becomes excessively gummy","Thick coating mouthfeel",[3]],["Mustard seeds","Hot 80c",0,0,0,1,1,"Isothiocyanate overload","Burning nasal sensation",[3,5]],["Mustard seeds","Cold",0,1,0,1,1,"Acidity turns sharp","Acidic harshness",[3,5]],["Hibiscus","Hot 80c",0,1,0,1,0,"Tannin astringency — classic over-extraction","Leathery dry grip on gums and cheeks",[2,4]],["Hibiscus","Cold",0,1,0,0,0,"Sourness sharpens","Pure sharp acidity",[2]],["Red Sichuan pepper","Hot 80c",0,0,0,1,0,"Sanshool builds to numbing overload","Excessive mouth numbness",[5]],["Green Sichuan pepper","Hot 80c",0,0,0,1,0,"Sanshool overload","Intense sharp numbing",[5]],["Green Sichuan pepper","N2O",0,0,0,1,0,"Maximum numbing and bitter lime","Sharp tingling numbness",[5]],["Liquorice root","Hot 80c",1,0,0,1,0,"Glycyrrhizin overload","Persistent anise coating",[3,6,7]],["Himalayan salt","Hot 80c",0,0,1,0,0,"Pure mineral salinity overdose","Sharpness on tip and edges of tongue",[3]],["Oolong","Hot 80c",1,0,0,1,1,"Catechins over-extract","Dry leathery grip",[1,3,4]],["Oolong","Cold",1,0,0,0,1,"Clean floral-umami sweetness if overdosed","Dense floral umami",[1,3,6]],["Chamomile","Hot 80c",1,0,0,1,0,"Medicinal and hay-like","Hay-medicine sensation",[1,3]],["Chamomile","Cold",1,0,0,0,0,"Faint delicate floral if overdosed","Faint floral",[1,3]],["Roasted barley","Hot 80c",1,0,0,1,1,"Malt turns stale","Stale bread-bitter note",[1,3,6]],["Roasted barley","Cold",1,0,0,0,1,"Clean malt sweetness and umami","Faint malt-umami",[1,3,6]],["Matcha","Cold",1,0,0,0,1,"L-theanine dominant","Clean umami-sweet",[3,6]],["MSG","Cold",0,0,0,0,1,"Palate fatigue","Same palate fatigue",[6]],["Dried shiitake","Cold",0,0,0,0,1,"Umami palate fatigue","Heavy one-dimensional umami",[6]],["Kombu (N2O)","N2O",0,0,1,1,1,"Alginate and bitter over-extract","Seaweed bitterness plus heavy umami",[3,6]],["Citric acid","Hot 80c",0,1,0,0,0,"Excessive sharp acidity","Painful lemon acidity",[2]],["Lactic acid","Hot 80c",0,1,0,0,0,"Sourness builds to yoghurt-tang","Sour dairy heaviness",[2]],["Wattleseed","Cold",1,0,0,0,1,"Clean sweet-umami","Clean coffee-chocolate sweetness",[1,3,6]],["Rose petals (dry)","Cold",1,0,0,0,0,"Faint soapy if overdosed","Faint delicate floral",[1]],["Vanilla pod","Cold",1,0,0,0,0,"Cloying sweetness","Cloying synthetic sweetness",[1,3]],["Fennel seeds","Hot 80c",1,0,0,1,0,"Anise becomes cloying","Persistent anise",[1,6]],["Juniper berry","Cold",1,1,0,0,0,"Faint pine if overdosed","Faint pine",[1,2]],["Sumac","Cold",0,1,0,0,0,"Painful sharp acidity","Painful acidity",[2]],["Tamarind","Cold",1,1,0,0,0,"Sharp one-dimensional sourness","Sharp sourness",[2,3]],["Rooibos","Hot 80c",1,0,0,0,0,"Sweetness turns flat","Dull honey note",[3]],["Galangal","Cold",0,1,0,0,0,"Faint citrus if overdosed","Faint citrus acidity",[1,2]],["Lemongrass","Cold",0,1,0,0,0,"Soapy note if overdosed","Flat sour",[1,2]],["Cacao nibs","Cold",1,0,0,0,1,"Heavy cocoa umami","Heavy cocoa umami",[3,6]],["Coffee (light roast)","Cold",1,1,0,0,1,"Flat umami-sweetness","Flat umami-sweetness",[1,3,6]],["Dried porcini","Cold",0,0,0,0,1,"Umami palate fatigue","Heavy one-dimensional umami",[6]],["Dulse (cold brew)","Cold",0,0,1,0,1,"Smoky umami becomes flat","Saline heaviness",[3,6]],["Nutritional yeast","Cold",1,0,1,0,1,"Heavy cheesy umami","Heavy cheesy umami",[3,6]],["Gentian root","Cold",0,0,0,1,0,"Still extremely bitter","Persistent dry bitter",[4,7]],["Roasted chicory root","Cold",1,0,0,0,0,"Faint sweetness only","Faint sweetness",[3]],["Wakame","Cold",0,0,1,0,1,"Saline heaviness if overdosed","Saline heaviness",[3,6]]];
+var DING=[["Celeriac","Hot 80c",1,0,0,1,1,"Bitterness turns sharp and medicinal","Dry bitter coating on back of tongue",[]],["Turmeric","Hot 80c",0,0,0,1,1,"Resin and medicinal bitterness dominate","Intense dry mouth coating",[4,6]],["Turmeric","Cold",0,0,0,1,0,"Mild bitterness increases slowly","Lingering dry bitterness",[4]],["Kombu (cold brew)","Cold",0,0,1,0,1,"Umami becomes flat and repetitive","Saline heaviness, palate fatigue",[3,6]],["Ceylon tea","Hot 80c",0,1,0,1,0,"Tannin overload — heavy astringency","Dry leathery grip all over mouth",[2,4]],["Ceylon tea","N2O",0,1,0,1,0,"Tannin and acid both sharpen","Dry astringent grip",[2,4]],["Kaffir lime leaf","Hot 80c",0,1,0,1,0,"Resinous bitterness dominates and citrus turns soapy","Soapy-resinous sensation",[1,2]],["Kaffir lime leaf","Cold",0,1,0,0,0,"Citrus turns soapy if overdosed","Faint soapy acidity",[1,2]],["Orange peel (dry)","Hot 80c",1,1,0,1,0,"Pith bitterness dominates","Harsh dry bitter coating",[1,2,4]],["Ginger (dry)","Hot 80c",0,0,0,1,0,"Shogaol dominant — harsh dry heat","Burning dry heat",[5]],["Green cardamom","Hot 80c",1,0,0,1,0,"Camphor and resin become medicinal","Eucalyptus-camphor overload",[1,3]],["Green cardamom","Cold",1,0,0,0,0,"Low risk cold","Faint floral sweetness",[1,3]],["Red pepper","Hot 80c",1,0,0,1,0,"Vegetal bitterness","Stewed pepper note",[3]],["Malic acid","Hot 80c",0,1,0,0,0,"Excessive sharp acidity","Sour pain on sides of tongue",[2]],["Malic acid","Cold",0,1,0,0,0,"Painful acidity","Same painful acidity",[2]],["Glycerine","Hot 80c",1,0,0,0,0,"Cloying viscous sweetness","Thick coating sweetness",[3]],["Assam tea","Hot 80c",0,0,0,1,1,"Heavy tannin astringency and umami fatigue","Dry leathery grip",[4,6]],["Assam tea","Cold",0,0,0,0,1,"Umami becomes flat","Palate fatigue",[6]],["Pu-erh tea","Hot 80c",1,0,0,1,1,"Fermented earthiness turns rank","Damp basement note",[4,6,7]],["Pu-erh tea","Cold",1,0,0,0,1,"Umami flatness","One-dimensional earthiness",[6,7]],["Beet (dry)","Hot 80c",1,0,0,0,1,"Concentrated geosmin overwhelming","Intense earthy-sweet",[3,6]],["Black pepper","Hot 80c",0,0,0,1,0,"Piperine overload","Burning dry sensation",[4,5]],["Coriander seeds","Hot 80c",1,0,0,1,0,"Citrus turns soapy","Soapy-resinous coating",[1,3]],["Coriander seeds","Cold",1,0,0,0,0,"Faint citrus if overdosed","Faint citrus sweetness",[1,3]],["Star anise","Hot 80c",1,0,0,1,0,"Anethole overload — anise becomes medicinal","Cough-syrup sensation",[1,6]],["Oakwood (whisky barrel chips)","Hot 80c",1,0,0,1,1,"Tannin astringency and bitter phenols dominate","Dry leathery grip",[3,4,6]],["Oakwood (whisky barrel chips)","N2O",1,0,0,1,1,"Tannin and bitter phenols over-extract","Dry astringent grip",[3,4,6]],["Gum arabic","Hot 80c",0,0,0,0,0,"Texture becomes excessively gummy","Thick coating mouthfeel",[3]],["Mustard seeds","Hot 80c",0,0,0,1,1,"Isothiocyanate overload","Burning nasal sensation",[3,5]],["Mustard seeds","Cold",0,1,0,1,1,"Acidity turns sharp","Acidic harshness",[3,5]],["Hibiscus","Hot 80c",0,1,0,1,0,"Tannin astringency — classic over-extraction","Leathery dry grip on gums and cheeks",[2,4]],["Hibiscus","Cold",0,1,0,0,0,"Sourness sharpens","Pure sharp acidity",[2]],["Red Sichuan pepper","Hot 80c",0,0,0,1,0,"Sanshool builds to numbing overload","Excessive mouth numbness",[5]],["Green Sichuan pepper","Hot 80c",0,0,0,1,0,"Sanshool overload","Intense sharp numbing",[5]],["Green Sichuan pepper","N2O",0,0,0,1,0,"Maximum numbing and bitter lime","Sharp tingling numbness",[5]],["Liquorice root","Hot 80c",1,0,0,1,0,"Glycyrrhizin overload","Persistent anise coating",[3,6,7]],["Himalayan salt","Hot 80c",0,0,1,0,0,"Pure mineral salinity overdose","Sharpness on tip and edges of tongue",[3]],["Oolong","Hot 80c",1,0,0,1,1,"Catechins over-extract","Dry leathery grip",[1,3,4]],["Oolong","Cold",1,0,0,0,1,"Clean floral-umami sweetness if overdosed","Dense floral umami",[1,3,6]],["Chamomile","Hot 80c",1,0,0,1,0,"Medicinal and hay-like","Hay-medicine sensation",[1,3]],["Chamomile","Cold",1,0,0,0,0,"Faint delicate floral if overdosed","Faint floral",[1,3]],["Roasted barley","Hot 80c",1,0,0,1,1,"Malt turns stale","Stale bread-bitter note",[1,3,6]],["Roasted barley","Cold",1,0,0,0,1,"Clean malt sweetness and umami","Faint malt-umami",[1,3,6]],["Matcha","Cold",1,0,0,0,1,"L-theanine dominant","Clean umami-sweet",[3,6]],["MSG","Cold",0,0,0,0,1,"Palate fatigue","Same palate fatigue",[6]],["Dried shiitake","Cold",0,0,0,0,1,"Umami palate fatigue","Heavy one-dimensional umami",[6]],["Kombu (N2O)","N2O",0,0,1,1,1,"Alginate and bitter over-extract","Seaweed bitterness plus heavy umami",[3,6]],["Citric acid","Hot 80c",0,1,0,0,0,"Excessive sharp acidity","Painful lemon acidity",[2]],["Lactic acid","Hot 80c",0,1,0,0,0,"Sourness builds to yoghurt-tang","Sour dairy heaviness",[2]],["Wattleseed","Cold",1,0,0,0,1,"Clean sweet-umami","Clean coffee-chocolate sweetness",[1,3,6]],["Rose petals (dry)","Cold",1,0,0,0,0,"Faint soapy if overdosed","Faint delicate floral",[1]],["Vanilla pod","Cold",1,0,0,0,0,"Cloying sweetness","Cloying synthetic sweetness",[1,3]],["Fennel seeds","Hot 80c",1,0,0,1,0,"Anise becomes cloying","Persistent anise",[1,6]],["Juniper berry","Cold",1,1,0,0,0,"Faint pine if overdosed","Faint pine",[1,2]],["Sumac","Cold",0,1,0,0,0,"Painful sharp acidity","Painful acidity",[2]],["Tamarind","Cold",1,1,0,0,0,"Sharp one-dimensional sourness","Sharp sourness",[2,3]],["Rooibos","Hot 80c",1,0,0,0,0,"Sweetness turns flat","Dull honey note",[3]],["Galangal","Cold",0,1,0,0,0,"Faint citrus if overdosed","Faint citrus acidity",[1,2]],["Lemongrass","Cold",0,1,0,0,0,"Soapy note if overdosed","Flat sour",[1,2]],["Cacao nibs","Cold",1,0,0,0,1,"Heavy cocoa umami","Heavy cocoa umami",[3,6]],["Coffee (light roast)","Cold",1,1,0,0,1,"Flat umami-sweetness","Flat umami-sweetness",[1,3,6]],["Dried porcini","Cold",0,0,0,0,1,"Umami palate fatigue","Heavy one-dimensional umami",[6]],["Dulse (cold brew)","Cold",0,0,1,0,1,"Smoky umami becomes flat","Saline heaviness",[3,6]],["Nutritional yeast","Cold",1,0,1,0,1,"Heavy cheesy umami","Heavy cheesy umami",[3,6]],["Gentian root","Cold",0,0,0,1,0,"Still extremely bitter","Persistent dry bitter",[4,7]],["Roasted chicory root","Cold",1,0,0,0,0,"Faint sweetness only","Faint sweetness",[3]],["Wakame","Cold",0,0,1,0,1,"Saline heaviness if overdosed","Saline heaviness",[3,6]],["Osmanthus (dry)","Cold",1,0,0,0,0,"Soapy floral, perfumed","Cloying sweetness",[1,3]],["Chrysanthemum (dry)","Cold",1,0,0,1,0,"Medicinal, bitter floral","Dry bitter floral",[1,2,4]],["Butterfly pea flower","Cold",0,0,0,0,0,"Thin and grassy","Flat watery",[1]],["Pandan (dry)","Cold",1,0,0,0,0,"Hay-like, loses character","Thin sweetness",[1,3]],["Lemongrass (dry)","Cold",0,1,0,0,0,"Soapy citrus, sharp","Sharp citrus sting",[1,2]],["Galangal (dry)","Cold",0,0,0,1,0,"Pine resin, medicinal","Resinous bitter",[1,2,5]],["Kaffir lime zest (dry)","Cold",0,1,0,0,0,"Soapy resinous","Resinous bite",[1,2]],["Shiso leaf (dry)","Cold",0,0,0,1,0,"Medicinal, camphor","Camphor bitterness",[1,3]],["White pepper","Cold",0,0,0,1,0,"Dusty sharp bitterness","Dry dusty heat",[2,5]],["Long pepper","Cold",0,0,0,1,0,"Bitter resin dominant","Resinous heat",[2,4,5]],["Grains of paradise","Cold",0,0,0,1,0,"Sharp bitter","Dry sharp heat",[2,5]],["Tamarind (dry)","Cold",1,1,0,0,0,"Overwhelming sour, loses sweet","Caustic sourness",[2,3,6]],["Yuzu peel (dry)","Cold",0,1,0,1,0,"Soapy resinous","Resinous bitter",[1,2]],["Amchur (dry mango)","Cold",1,1,0,0,0,"Sharp sour dominates","Acid sting",[2,3]],["Hibiscus (cold brew)","Cold",0,1,0,1,0,"Tannin astringency, harsh","Dry leathery grip",[1,2,6]],["Dried rose petal","Cold",1,0,0,0,0,"Perfumed soapy","Cloying floral",[1,3]],["Arame (seaweed)","Cold",1,0,1,0,1,"Sweet umami becomes heavy","Dense saline umami",[1,3,6]],["Nori (dry)","Cold",0,0,1,0,1,"Fishy algae note","Marine heaviness",[1,3,6]],["Hijiki (dry)","Cold",0,0,1,0,1,"Intense marine, fishy","Heavy fishy saline",[3,6]],["Kelp (cold brew)","Cold",0,0,1,0,1,"Alginate over-extract, slimy","Marine heaviness",[3,6]],["Katsuobushi (bonito)","Cold",0,0,1,0,1,"Fishy dominant","Intense fishy saline",[3,6,7]],["Roasted kelp","Hot 80c",0,0,1,1,1,"Roast bitterness and alginate","Seaweed bitterness plus smoky umami",[3,4,6]],["Oolong (dark roast)","Cold",1,0,0,1,1,"Roast bitterness over floral","Dry roast heaviness",[1,3,6]],["Hojicha","Cold",1,0,0,1,0,"Bitter roast dominates","Dry roast bitter",[1,3,6]],["Kukicha","Cold",1,0,0,1,1,"Thin, grassy bitter","Thin flat",[1,3,6]],["Gyokuro","Cold",1,0,0,0,1,"Intense umami fatigue","Heavy vegetal umami",[1,3,6,7]],["Sencha","Cold",1,0,0,1,0,"Grassy bitter","Vegetal bitterness",[1,2,4]],["Bancha","Cold",0,0,0,1,0,"Flat woody bitter","Thin flat",[2,4]],["Aged pu-erh","Cold",0,0,0,1,1,"Musty earthy dominant","Musty heaviness",[3,6,7]],["White tea (dry)","Cold",1,0,0,0,0,"Thin and watery","Flat",[1,3]],["Lapsang souchong","Cold",0,0,0,1,0,"Smoke dominant","Harsh smoke",[1,3,6]],["Darjeeling (first flush)","Cold",1,1,0,1,0,"Astringent tannin","Dry tannin grip",[1,2,4]],["Genmaicha","Cold",1,0,0,1,0,"Roast bitterness","Dry roast",[1,3,6]],["Rose hip (dry)","Cold",1,1,0,1,0,"Sharp sour tannin","Dry acid grip",[1,2,6]],["Elderflower (dry)","Cold",1,0,0,0,0,"Soapy perfumed","Cloying floral",[1,3]],["Dried lemon verbena","Cold",0,1,0,0,0,"Sharp citrus dominant","Sharp sting",[1,2]],["Sansho pepper","Cold",0,0,0,1,0,"Numbing tingle, bitter","Dry numbing",[1,2,5]],["Dried goji berry","Cold",1,1,0,0,0,"Sour candy, loses complexity","Thin sour sweet",[1,2]],["Dried jujube","Cold",1,0,0,0,0,"Thin sweetness","Flat sweet",[1,3]],["Licorice (anise-free)","Cold",1,0,0,0,0,"Thin sweetness","Flat sweet",[3,6,7]],["Fennel pollen","Cold",1,0,0,0,0,"Soapy anise","Anise dominance",[1,3]],["Dried lavender","Cold",1,0,0,1,0,"Soapy medicinal","Soap bitterness",[1]],["Toasted sesame","Cold",1,0,0,1,0,"Rancid oil note","Heavy rancid",[1,3]],["Miso (white)","Cold",1,0,1,0,1,"Overwhelming salt and umami","Heavy saline umami",[3,6]],["Yuzu kosho (dry)","Cold",0,1,1,1,0,"Salt acid dominant","Sharp caustic",[2,5]],["Dried longan","Cold",1,0,0,0,0,"Thin sweetness only","Flat",[1,3]],["Lotus root (dry)","Cold",1,0,0,0,0,"Starchy flat","Flat",[3]],["Buckwheat (roasted)","Cold",1,0,0,0,0,"Thin, loses character cold","Flat",[1,3]],["Tamarind leaf (dry)","Cold",0,1,0,1,0,"Sharp sour dominant","Caustic sour",[2,6]]];
 
 // ── HELPERS ──
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -440,9 +448,49 @@ function islr(s){var sl=s.toLowerCase();return LOWRISK.some(function(p){return s
 // ── CLOUD ──
 function saveDB(){
   ss('spin','Saving...');
+  // Safety check — never save without recipes
+  if(!DB.recipes||Object.keys(DB.recipes).length===0){
+    ss('err','Save blocked — no recipes');
+    console.error('saveDB blocked: recipes missing');
+    return;
+  }
+  // Always keep localStorage backup
+  try{localStorage.setItem('emptyset_backup',JSON.stringify(DB));localStorage.setItem('emptyset_backup_ts',Date.now());}catch(e){}
   fetch(URL,{method:'PUT',headers:HDR,body:JSON.stringify(DB)})
     .then(function(r){ss('ok','Saved');})
     .catch(function(e){ss('err','Save failed');});
+}
+
+function exportDB(){
+  var d=new Date();
+  var ts=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var fname='empty-set-backup-'+ts+'.json';
+  // Merge DING baseline with DB.ingredients (DB takes precedence)
+  var m=imap();
+  var allIngs=Object.keys(m).map(function(n){
+    var r=m[n].rows[0];
+    return [n,r.ext,r.sw,r.so,r.sa,r.bi,r.um,r.overSign,r.overFeel,r.layers];
+  });
+  var exportData=JSON.parse(JSON.stringify(DB));
+  exportData.ingredients=allIngs;
+  exportData._exported=new Date().toISOString();
+  exportData._ingredientCount=allIngs.length;
+  var blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  var u=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=u;a.download=fname;a.click();
+  URL.revokeObjectURL(u);
+}
+
+function mergeIngredientsOnly(newIngs){
+  // Safe ingredient update — never touches recipes, briefs or brew logs
+  if(!DB.recipes||Object.keys(DB.recipes).length===0){
+    console.error('mergeIngredientsOnly blocked — recipes missing from DB');
+    return false;
+  }
+  DB.ingredients=newIngs;
+  saveDB();
+  return true;
 }
 
 function initDB(){
@@ -450,6 +498,12 @@ function initDB(){
   fetch(URL+'/latest',{headers:{'X-Master-Key':KEY,'X-Bin-Meta':'false'}})
     .then(function(r){return r.json();})
     .then(function(data){
+      // Auto-inject DING if ingredients are stale
+      if(data&&data.recipes&&Object.keys(data.recipes).length>0&&(!data.ingredients||data.ingredients.length<100)){
+        console.log('Auto-injecting ingredients: found',data.ingredients?data.ingredients.length:0,'expected 100+');
+        data.ingredients=DING;
+        fetch(URL,{method:'PUT',headers:HDR,body:JSON.stringify(data)}).then(function(){console.log('Ingredients auto-injected:',DING.length);}).catch(function(){});
+      }
       if(data&&data.brew_logs) DB.brew_logs=data.brew_logs;
       if(data&&data.recipes&&Object.keys(data.recipes).length>0) DB.recipes=data.recipes;
       else{DB.recipes=DREC;fetch(URL,{method:'PUT',headers:HDR,body:JSON.stringify(DB)}).catch(function(){});}
@@ -1389,9 +1443,15 @@ function iopnform(name){
   f.scrollIntoView({behavior:'smooth'});
 }
 
+document.getElementById('ai-ing-btn').addEventListener('click', aiIngredientLookup);
+
 document.getElementById('iadd').addEventListener('click',function(){iopnform(null);});
 document.getElementById('icancel').addEventListener('click',function(){document.getElementById('iform').classList.remove('show');});
 document.getElementById('isearch').addEventListener('input',rilist);
+document.getElementById('ifname').addEventListener('input',function(){
+  var status = document.getElementById('ai-ing-status');
+  if(status){status.style.display='none';status.textContent='';}
+});
 
 // Taste filter chips
 document.getElementById('pane-ings').addEventListener('click',function(e){
@@ -1852,6 +1912,72 @@ function drawRadar2(drink){
 }
 
 // ── INIT ──
+// ── AI INGREDIENT LOOKUP ──
+function aiIngredientLookup(){
+  var name = document.getElementById('ifname').value.trim();
+  if(!name){alert('Enter an ingredient name first.');return;}
+  var btn = document.getElementById('ai-ing-btn');
+  var status = document.getElementById('ai-ing-status');
+  btn.disabled = true;
+  btn.textContent = 'Researching...';
+  status.style.display = 'block';
+  status.textContent = 'Asking Claude about ' + name + '...';
+
+  var prompt = 'You are a flavour scientist specialising in botanical cold brew beverages. Research this ingredient for use in a cold brew beverage context: "' + name + '"\n\nRespond ONLY with a JSON object, no preamble, no markdown, no backticks. Use exactly this structure:\n{\n  "name": "canonical ingredient name",\n  "ext": "Cold",\n  "sw": 0,\n  "so": 0,\n  "sa": 0,\n  "bi": 0,\n  "um": 0,\n  "layers": [],\n  "overSign": "brief sign of over-extraction",\n  "overFeel": "mouthfeel sensation when over-extracted",\n  "notes": "2-3 sentence flavour science note for a brewer"\n}\n\nRules:\n- ext: always "Cold" unless hot extraction is essential for this ingredient (e.g. roasted/maillard compounds only release hot)\n- sw/so/sa/bi/um: 1 if present, 0 if not. Be precise — only mark tastes that are genuinely characteristic\n- layers: array of integers 1-7 where 1=aroma, 2=attack, 3=mid palate, 4=late palate, 5=pungent/tingle, 6=finish, 7=aftertaste. Cold brew typically gives 1,3,6 for teas. Be specific to this ingredient.\n- overSign: what you taste/smell when over-extracted, 5-8 words\n- overFeel: mouthfeel sensation when over-extracted, 3-6 words\n- notes: practical cold brew brewing note — what makes this ingredient distinctive, any risks, what it pairs with';
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{role: 'user', content: prompt}]
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    btn.disabled = false;
+    btn.textContent = '✨ Research ingredient';
+    if(!data.content||!data.content[0]){status.textContent = 'No response.';return;}
+    var raw = data.content[0].text || '';
+    // Strip any accidental backticks
+    raw = raw.replace(/```json|```/g,'').trim();
+    try {
+      var ing = JSON.parse(raw);
+      // Fill form fields
+      document.getElementById('ifname').value = ing.name || name;
+      var extSel = document.getElementById('ifext');
+      if(ing.ext) extSel.value = ing.ext;
+      document.getElementById('ifsw').checked = !!ing.sw;
+      document.getElementById('ifso').checked = !!ing.so;
+      document.getElementById('ifsa').checked = !!ing.sa;
+      document.getElementById('ifbi').checked = !!ing.bi;
+      document.getElementById('ifum').checked = !!ing.um;
+      // Layers
+      [1,2,3,4,5,6,7].forEach(function(l){
+        var el = document.getElementById('ifl'+l);
+        if(el) el.checked = (ing.layers||[]).indexOf(l) !== -1;
+      });
+      // Over-extraction
+      if(ing.overSign) document.getElementById('ifsign').value = ing.overSign;
+      if(ing.overFeel) document.getElementById('iffeel').value = ing.overFeel;
+      // Show notes
+      status.style.color = '#1D9E75';
+      status.innerHTML = '<strong>&#10003; Filled</strong> &mdash; ' + esc(ing.notes || '') + '<br><span style="color:#aaa;font-size:10px;">Review all fields before saving.</span>';
+    } catch(e) {
+      status.style.color = '#E8312A';
+      status.textContent = 'Could not parse response. Try again.';
+      console.error('AI parse error:', e, raw);
+    }
+  })
+  .catch(function(e){
+    btn.disabled = false;
+    btn.textContent = '✨ Research ingredient';
+    status.style.color = '#E8312A';
+    status.textContent = 'Request failed: ' + e.message;
+  });
+}
+
 function initAll(){
   rdbtns();prodbtns();brender();prend();rilist();rrlist();
   loadBriefSelect();
