@@ -192,11 +192,9 @@ canvas#radar{display:block;margin:0 auto;}
 <div class="hdr">
   <div><div class="htitle">Empty Set</div><div class="hsub">Production Tools</div></div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <button onclick="if(confirm('Reset disabled — data lives in cloud only.')){console.log('Reset disabled'); if(false){,lit:[],wiry:[]};saveDB();initAll();}" style="font-family:'Space Mono',monospace;font-size:9px;color:#ccc;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">Reset</button>
     <span class="sdot spin" id="sdot"></span>
     <span class="slbl" id="slbl">Connecting...</span>
-    <button onclick="exportDB()" style="font-size:9px;color:#ccc;background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;margin-left:8px;">&#8595; Backup</button>
-  </div>
+    </div>
 </div>
 <div class="tabs">
   <button class="tab on" data-t="brew">Brew</button>
@@ -440,43 +438,9 @@ function saveDB(){
     console.error('saveDB blocked: recipes missing');
     return;
   }
-  // Always keep localStorage backup
-  try{localStorage.setItem('emptyset_backup',JSON.stringify(DB));localStorage.setItem('emptyset_backup_ts',Date.now());}catch(e){}
   fetch(URL,{method:'PUT',headers:HDR,body:JSON.stringify(DB)})
     .then(function(r){ss('ok','Saved');})
     .catch(function(e){ss('err','Save failed');});
-}
-
-function exportDB(){
-  var d=new Date();
-  var ts=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  var fname='empty-set-backup-'+ts+'.json';
-  // Merge DING baseline with DB.ingredients (DB takes precedence)
-  var m=imap();
-  var allIngs=Object.keys(m).map(function(n){
-    var r=m[n].rows[0];
-    return [n,r.ext,r.sw,r.so,r.sa,r.bi,r.um,r.overSign,r.overFeel,r.layers];
-  });
-  var exportData=JSON.parse(JSON.stringify(DB));
-  exportData.ingredients=allIngs;
-  exportData._exported=new Date().toISOString();
-  exportData._ingredientCount=allIngs.length;
-  var blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
-  var u=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=u;a.download=fname;a.click();
-  URL.revokeObjectURL(u);
-}
-
-function mergeIngredientsOnly(newIngs){
-  // Safe ingredient update — never touches recipes, briefs or brew logs
-  if(!DB.recipes||Object.keys(DB.recipes).length===0){
-    console.error('mergeIngredientsOnly blocked — recipes missing from DB');
-    return false;
-  }
-  DB.ingredients=newIngs;
-  saveDB();
-  return true;
 }
 
 function initDB(){
@@ -486,17 +450,16 @@ function initDB(){
     .then(function(data){
       if(data&&data.brew_logs) DB.brew_logs=data.brew_logs;
       if(data&&data.recipes&&Object.keys(data.recipes).length>0) DB.recipes=data.recipes;
-      else{DB.recipes={};ss('err','No recipes found in cloud');}
+      else{DB.recipes={};ss('err','No recipes in cloud');}
       if(data&&data.ingredients&&data.ingredients.length>0) DB.ingredients=data.ingredients;
-      else{DB.ingredients=[];ss('err','No ingredients found in cloud');}
+      else DB.ingredients=[];
       if(data&&data.briefs) DB.briefs=data.briefs;
       else DB.briefs={};
       ss('ok','Synced');
       initAll();
     })
     .catch(function(e){
-      ss('err','Cannot connect to cloud — data unavailable offline.');
-      console.error('JSONBin load failed:',e);
+      ss('err','Cannot connect to cloud — check connection');
     });
 }
 
