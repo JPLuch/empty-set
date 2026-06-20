@@ -465,15 +465,26 @@ function syncFromCloud(){
 
 function saveDB(){
   ss('spin','Saving...');
-  // Safety check — never save without recipes
   if(!DB.recipes||Object.keys(DB.recipes).length===0){
     ss('err','Save blocked — no recipes');
-    console.error('saveDB blocked: recipes missing');
     return;
   }
   fetch(URL,{method:'PUT',headers:HDR,body:JSON.stringify(DB)})
-    .then(function(r){ss('ok','Saved');})
-    .catch(function(e){ss('err','Save failed');});
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.metadata){
+        ss('ok','Saved ✓');
+        var m=document.getElementById('save-modal');
+        if(m)m.style.display='flex';
+      } else {
+        ss('err','Save error');
+        alert('Save may have failed. Try again.');
+      }
+    })
+    .catch(function(e){
+      ss('err','Save failed ✗');
+      alert('Save failed: '+e.message);
+    });
 }
 
 function initDB(){
