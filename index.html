@@ -808,7 +808,16 @@ document.getElementById('dbtns').addEventListener('click',function(e){
   var b=e.target.closest('.dbtn');if(!b)return;
   document.querySelectorAll('.dbtn').forEach(function(x){x.className='dbtn';});
   b.classList.add('dbtn',b.dataset.d);
-  rDrink=b.dataset.d;rrender();drawRadar(rDrink);drawRadar2(rDrink);
+  rDrink=b.dataset.d;
+  updateVerBar();
+  rrender();
+  var as=document.querySelector('.subtab.on');
+  if(as){
+    var s=as.dataset.s;
+    if(s==='product'){drawRadar(rDrink);drawRadar2(rDrink);prodRender(rDrink);}
+    if(s==='develop')renderDevelop(rDrink);
+    if(s==='recipe'){rrlist();ropnrform(rDrink);}
+  }
 });
 document.getElementById('vol').addEventListener('input',function(){
   var v=parseFloat(this.value);if(!isNaN(v)&&v>0){rVol=v;rrender();drawRadar(rDrink);drawRadar2(rDrink);}
@@ -2131,10 +2140,12 @@ function aiIngredientLookup(){
 function updateVerBar(){
   var bar=document.getElementById('ver-bar');
   var sel=document.getElementById('ver-sel');
-  if(!bar||!sel||!rDrink)return;
+  if(!bar||!sel){return;}
+  if(!rDrink){bar.style.display='none';sel.innerHTML='';return;}
   var versions=(DB.recipe_history&&DB.recipe_history[rDrink])||[];
-  if(!versions.length){bar.style.display='none';return;}
+  if(!versions.length){bar.style.display='none';sel.innerHTML='';return;}
   bar.style.display='block';
+  sel.value=''; // always reset to current when drink changes
   sel.innerHTML='<option value="">Current</option>'+versions.map(function(v,i){
     var d=new Date(v._saved);
     var label=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
