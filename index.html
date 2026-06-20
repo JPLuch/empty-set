@@ -2113,5 +2113,12 @@ document.getElementById('brief-clear-btn').addEventListener('click',function(){
 
 initDB();
 </script>
+<div id="save-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border:2px solid #0a0a0a;padding:32px 40px;text-align:center;max-width:280px;width:90%;">
+    <div style="font-family:'Permanent Marker',cursive;font-size:32px;margin-bottom:8px;">✓</div>
+    <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:20px;">Saved to cloud</div>
+    <button onclick="document.getElementById('save-modal').style.display='none';" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:10px 28px;background:#0a0a0a;color:#fff;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:.08em;width:100%;">OK</button>
+  </div>
+</div>
 </body>
 </html>
