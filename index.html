@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Empty Set — Ingredient & Recipe Model v27</title>
+<title>Empty Set — Ingredient & Recipe Model v28</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -98,7 +98,8 @@ body{font-family:'Space Mono',monospace;background:#f7f6f2;color:#0a0a0a;max-wid
 /* recipe */
 .rrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f0efe9;flex-wrap:wrap;}
 .recipe-cols{display:block;}
-@media(min-width:820px){.recipe-cols{display:flex;align-items:flex-start;}.rcol-form{flex:1 1 48%;min-width:0;border-right:1.5px solid #e8e6e0;}.rcol-charts{flex:1 1 52%;min-width:0;}.rcol-charts #r-results{position:sticky;top:0;}}
+@media(min-width:1000px){.recipe-cols{display:flex;align-items:flex-start;}.rcol-form{flex:1 1 50%;min-width:0;border-right:1.5px solid #e8e6e0;}.rcol-charts{flex:1 1 50%;min-width:0;}.rcol-charts #r-results{position:sticky;top:0;}}
+@media(min-width:1000px){body{max-width:1980px;padding-left:20px;padding-right:20px;}#view-ing,#view-meth{max-width:1120px;}.chartbox{width:100%;}}
 .methodhdr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 0 3px;margin-top:4px;border-bottom:1.5px solid #0a0a0a;display:inline-block;}
 .rrow .rn{flex:2;font-size:12px;font-weight:700;}
 .rrow select,.rrow input{font-family:'Space Mono',monospace;font-size:11px;padding:5px 6px;border:1.5px solid #e8e6e0;background:#fff;}
@@ -140,6 +141,10 @@ body{font-family:'Space Mono',monospace;background:#f7f6f2;color:#0a0a0a;max-wid
 <body>
 <div class="hdr">
   <div><div class="htitle">Empty Set</div><div class="hsub">Ingredient &amp; recipe model v4 — extraction-aware</div></div>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <button class="btn sm" onclick="backupDownload()" title="Download a full local backup: ingredient DB + recipes + methods/process params">Backup</button>
+    <label class="btn sm" style="cursor:pointer;margin:0;" title="Restore from a backup .json file (does not touch the cloud until you Save)">Restore<input type="file" accept="application/json,.json" style="display:none;" onchange="backupRestore(this)"></label>
+  </div>
 </div>
 <div class="sbar"><span id="sleft">102 ingredients · local</span><span id="scount"></span></div>
 
@@ -206,7 +211,8 @@ body{font-family:'Space Mono',monospace;background:#f7f6f2;color:#0a0a0a;max-wid
   <div class="note" style="padding-top:14px;">Each ingredient stores its <b>full flavour potential</b> once. A method multiplies every component by the method&#8217;s <b>affinity</b> for that component&#8217;s solubility class, then applies a small <b>temporal bias</b>. Same ingredient, different profile per method.</div>
   <div style="padding:0 18px;"><div class="plabel">Class affinity (multiplier 0&#8211;1.2)</div><div id="affwrap"></div></div>
   <div style="padding:14px 18px;"><div class="plabel">Temporal bias per method</div><div id="biaswrap"></div></div>
-  <div style="padding:0 18px;"><button class="btn sm" onclick="resetMethods()">Reset to defaults</button></div>
+  <div style="padding:0 18px;"><div id="paramwrap"></div></div>
+  <div style="padding:14px 18px;"><button class="btn sm" onclick="resetMethods()">Reset affinity / bias</button></div>
 </div>
 
 <div class="mbg" id="modal"><div class="modal">
@@ -290,6 +296,7 @@ var COOKED_K=0.045;                                              // caramel/cook
 var COOKED_SHAPE={aroma:0.05,attack:0.15,mid:0.35,late:0.25,finish:0.15,after:0.05};
 var PROC={filter:'polish',pasteurise:true};                      // config the solver targets
 var MODEB_W={aroma:1.4,attack:1.2,mid:1.0,late:1.0,finish:1.0,after:1.0}; // recover top-note first
+var DOSE_CEIL_FLAGGED=5.9, DOSE_CEIL_FREE=15, DOSE_FLOOR=0.2;            // solver dose bounds
 function classRetention(cls,proc){
   if(!proc)return 1;
   var r=1;
@@ -640,10 +647,10 @@ function adjustableIdx(){
   var out=[];RECIPE.forEach(function(it,i){if(it.method!=='Carbonation'&&findIng(it.name))out.push(i);});return out;
 }
 function doseCeiling(name){
-  var ing=findIng(name);if(!ing)return 15;
+  var ing=findIng(name);if(!ing)return DOSE_CEIL_FREE;
   var od=ing.overdose||{};
   var hasOD=Object.keys(od).some(function(k){return od[k];});
-  return hasOD?5.9:15;            // keep under the >=6 fault threshold for flagged ingredients
+  return hasOD?DOSE_CEIL_FLAGGED:DOSE_CEIL_FREE;            // keep under the >=6 fault threshold for flagged ingredients
 }
 function modebObjective(items,target){
   var p=computeItems(items,PROC);
@@ -659,7 +666,7 @@ function modebSolve(){
   if(!procActive())return {error:'No process selected — nothing to compensate. Turn on pasteurise and/or a filter.',target:target};
   var trial=RECIPE.map(function(it){return {name:it.name,method:it.method,dose:it.dose,set:it.set,temp:it.temp,curve:it.curve};});
   var bench=idx.map(function(i){return RECIPE[i].dose;});
-  var bounds=idx.map(function(i){return {lo:0.2,hi:doseCeiling(RECIPE[i].name)};});
+  var bounds=idx.map(function(i){return {lo:DOSE_FLOOR,hi:doseCeiling(RECIPE[i].name)};});
   function obj(){return modebObjective(trial,target);}
   var best=obj(),prev=best;
   for(var pass=0;pass<30;pass++){
@@ -752,9 +759,8 @@ function modeBPanelHtml(){
       '<label style="font-size:11px;display:flex;align-items:center;gap:5px;"><input type="checkbox" '+(PROC.pasteurise?'checked':'')+' onchange="setProcPast(this.checked)"> flash pasteurise 72\u201375\u00B0C</label>'+
       '<label style="font-size:11px;display:flex;align-items:center;gap:5px;">filter <select onchange="setProcFilter(this.value)" style="font-size:11px;">'+fopts+'</select></label>'+
       '<button class="btn sm" onclick="solveModeB()">Solve</button>'+
-      '<button class="btn sm" style="border-color:#e8e6e0;color:#888;" onclick="toggleModebCoeff()">coeffs</button>'+
     '</div>'+
-    '<div id="modeb-coeff" style="display:none;margin-top:8px;">'+modebCoeffTable()+'<div style="font-size:9px;color:#aaa;margin-top:3px;">retention 1.0 = unchanged \u00B7 lower = more loss \u00B7 filter shown at 0.45\u00B5m, scaled down for looser grades</div></div>'+
+    '<div style="font-size:9px;color:#aaa;margin-top:6px;">Process &amp; solver coefficients are tunable in the <b>Methods</b> tab.</div>'+
     '<div id="modeb-out"></div>'+
   '</div>';
 }
@@ -1099,9 +1105,70 @@ function renderMethods(){
     return '<tr><td>'+l+'</td>'+tds+'</tr>';
   }).join('');
   document.getElementById('biaswrap').innerHTML='<table class="matrix"><tr><th>layer \\ method</th>'+METHODS.map(function(m){return '<th>'+METHOD_LABEL[m]+'</th>';}).join('')+'</tr>'+brows+'</table>';
+  renderParams();
+}
+function renderParams(){
+  var el=document.getElementById('paramwrap');if(!el)return;
+  function num(expr,val,step,w){return '<input type="number" step="'+(step||0.05)+'" value="'+val+'" style="width:'+(w||58)+'px;" onchange="var v=parseFloat(this.value);if(!isNaN(v)){'+expr+'=v;}">';}
+  function pair(lbl,expr,val,step){return '<span style="display:inline-flex;flex-direction:column;margin:0 12px 8px 0;"><span style="font-size:9px;color:#888;margin-bottom:2px;">'+lbl+'</span>'+num(expr,val,step)+'</span>';}
+  function classRow(obj,name){return CLASSES.map(function(c){return pair(c.replace('pungent-','p-'),name+"['"+c+"']",obj[c],0.05);}).join('');}
+  function layerRow(obj,name){return LAYERS.map(function(l){return pair(l,name+"['"+l+"']",obj[l],0.05);}).join('');}
+  function br(){return '<span style="flex-basis:100%;height:0;"></span>';}
+  function sec(title,explain,body){return '<div style="margin-top:16px;border-top:1px solid #e8e6e0;padding-top:10px;"><div class="plabel">'+title+'</div><div style="font-size:10px;color:#888;margin:2px 0 8px;line-height:1.5;">'+explain+'</div><div style="display:flex;flex-wrap:wrap;align-items:flex-end;">'+body+'</div></div>';}
+  el.innerHTML=
+    '<div class="plabel" style="font-size:12px;">Model parameters</div>'+
+    '<div style="font-size:10px;color:#888;">The knobs the model used to hard-code. Saved with your recipes (dev bin); older saves load with defaults.</div>'+
+    sec('Potency &amp; dose law','Stevens\u2019 Power-Law exponents \u2014 how fast a note grows as you raise its dose. Lower = saturates fast (potent aromatics; doubling adds little); higher = faster-than-linear (bulk botanicals get loud). This is why flat dose increases backfire. Ref dose is the anchor the curve is normalised to.',
+      pair('high potency','STEV.high',STEV.high)+pair('normal','STEV.normal',STEV.normal)+pair('low potency','STEV.low',STEV.low)+pair('ref dose g/L','REF_DOSE',REF_DOSE,0.5))+
+    sec('Flash pasteurise \u2014 class retention','Fraction of each compound class surviving 72\u201375\u00B0C flash. 0.55 on volatiles = lose 45% of top notes; 1.0 = untouched. Lower = more loss. Cooked-note strength sets how much caramel character the heat adds (scaled by aromatic + sugar load).',
+      classRow(PAST,'PAST')+pair('cooked-note strength','COOKED_K',COOKED_K,0.005))+
+    sec('Filtration \u2014 class retention (at 0.45\u00B5m)','Fraction surviving the tightest filter. polyphenol 0.80 strips grip/haze (smoother after); lipophilic 0.85 trims body. Tightness scales how much of this a looser grade applies \u2014 coarse 0.25 = a quarter of the 0.45\u00B5m effect.',
+      classRow(FILT,'FILT')+br()+pair('coarse 5\u201310\u00B5m','FILTER_TIGHT.coarse',FILTER_TIGHT.coarse)+pair('polish 1\u00B5m','FILTER_TIGHT.polish',FILTER_TIGHT.polish)+pair('fine 0.45\u00B5m','FILTER_TIGHT.fine',FILTER_TIGHT.fine))+
+    sec('Mode B solver','Layer weights = which layers the solver fights hardest to hold through the process (raise aroma to protect top-note, trading other layers). Dose bounds = the range it may push doses into; the flagged ceiling keeps overdose-prone ingredients under their fault point.',
+      layerRow(MODEB_W,'MODEB_W')+br()+pair('ceiling (flagged)','DOSE_CEIL_FLAGGED',DOSE_CEIL_FLAGGED,0.1)+pair('ceiling (others)','DOSE_CEIL_FREE',DOSE_CEIL_FREE,0.5)+pair('floor','DOSE_FLOOR',DOSE_FLOOR,0.1))+
+    sec('Carbonation','Dissolved CO\u2082 per bar \u2014 maps a recipe\u2019s bar setting to g/L.',
+      pair('g/L per bar','CO2_GL_PER_BAR',CO2_GL_PER_BAR,0.1))+
+    '<div style="margin-top:14px;"><button class="btn sm" onclick="resetParams()">Reset model params</button></div>';
+}
+function resetParams(){
+  STEV={high:0.5,normal:0.8,low:1.2};REF_DOSE=3;
+  PAST=defaultPast();FILT=defaultFilt();COOKED_K=0.045;
+  FILTER_TIGHT={none:0,coarse:0.25,polish:0.5,fine:1.0};
+  MODEB_W={aroma:1.4,attack:1.2,mid:1.0,late:1.0,finish:1.0,after:1.0};
+  DOSE_CEIL_FLAGGED=5.9;DOSE_CEIL_FREE=15;DOSE_FLOOR=0.2;CO2_GL_PER_BAR=3.3;
+  renderParams();showPop('Model params reset to defaults.',true);
 }
 function resetMethods(){AFF=defaultAff();BIAS=defaultBias();renderMethods();showPop('Methods reset to defaults.',true);}
 
+function backupDownload(){
+  var snap={kind:'empty-set-backup',ts:Date.now(),v:5,db:DB,recipes:SAVED,
+    methods:{affinity:AFF,bias:BIAS,process:{past:PAST,filt:FILT}}};
+  var blob=new Blob([JSON.stringify(snap)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='empty-set-backup-'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},1500);
+  showPop('Backup downloaded \u2014 '+(DB?DB.length:0)+' ingredients, '+(SAVED?SAVED.length:0)+' recipes.',true);
+}
+function backupRestore(input){
+  var f=input&&input.files&&input.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var snap=JSON.parse(rd.result);
+      if(!snap||(!snap.db&&!snap.recipes))throw new Error('not an Empty Set backup');
+      if(!confirm('Restore this backup?\n\n'+(snap.db?snap.db.length:0)+' ingredients, '+(snap.recipes?snap.recipes.length:0)+' recipes\n\nReplaces what\u2019s in the app now. The cloud is NOT touched \u2014 Save to cloud after if you want to keep it.')){input.value='';return;}
+      if(Array.isArray(snap.db))DB=snap.db;
+      if(Array.isArray(snap.recipes))SAVED=snap.recipes;
+      if(snap.methods){AFF=snap.methods.affinity||AFF;BIAS=snap.methods.bias||BIAS;if(snap.methods.process){PAST=snap.methods.process.past||PAST;FILT=snap.methods.process.filt||FILT;}}
+      normalizeAll();render();
+      showPop('Backup restored \u2014 Save to cloud to keep it.',true);
+    }catch(e){showPop('Restore failed: '+e.message,false);}
+    input.value='';
+  };
+  rd.readAsText(f);
+}
 function showPop(msg,ok){var p=document.getElementById('savepop');p.innerHTML=(ok?'<span class="ok">&#10003;</span>':'')+msg;p.classList.add('show');setTimeout(function(){p.classList.remove('show');},3000);}
 
 // ---- saved recipes + cloud ----
@@ -1220,7 +1287,11 @@ function cloudSave(reason,quiet){
     return;
   }
   if(!quiet)showSaveModal('saving');
-  var payload={v:5,recipes:SAVED,methods:{affinity:AFF,bias:BIAS,process:{past:PAST,filt:FILT}}};
+  var payload={v:5,recipes:SAVED,methods:{affinity:AFF,bias:BIAS,
+    process:{past:PAST,filt:FILT,tight:FILTER_TIGHT,cookedK:COOKED_K,cookedShape:COOKED_SHAPE},
+    dose:{stev:STEV,ref:REF_DOSE},
+    solver:{weights:MODEB_W,ceilFlagged:DOSE_CEIL_FLAGGED,ceilFree:DOSE_CEIL_FREE,floor:DOSE_FLOOR},
+    carbonation:{co2PerBar:CO2_GL_PER_BAR}}};
   fetch(BURL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':KEY},body:JSON.stringify(payload)})
    .then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('PUT '+r.status+' '+t.slice(0,120));});return r.json();})
    .then(function(){if(quiet)showPop(reason||'Saved.',true);else showSaveModal('ok',reason);})
@@ -1233,7 +1304,11 @@ function cloudLoad(){
      if(full){
        cloudLoaded=true; hideOfflineBanner();
        if(Object.prototype.hasOwnProperty.call(full,'recipes')){SAVED=full.recipes||[];}
-       if(full.methods){AFF=full.methods.affinity||AFF;BIAS=full.methods.bias||BIAS;if(full.methods.process){PAST=full.methods.process.past||PAST;FILT=full.methods.process.filt||FILT;}}
+       if(full.methods){AFF=full.methods.affinity||AFF;BIAS=full.methods.bias||BIAS;
+         var pr=full.methods.process;if(pr){PAST=pr.past||PAST;FILT=pr.filt||FILT;if(pr.tight)FILTER_TIGHT=pr.tight;if(pr.cookedK!=null)COOKED_K=pr.cookedK;if(pr.cookedShape)COOKED_SHAPE=pr.cookedShape;}
+         var ds=full.methods.dose;if(ds){if(ds.stev)STEV=ds.stev;if(ds.ref!=null)REF_DOSE=ds.ref;}
+         var sv=full.methods.solver;if(sv){if(sv.weights)MODEB_W=sv.weights;if(sv.ceilFlagged!=null)DOSE_CEIL_FLAGGED=sv.ceilFlagged;if(sv.ceilFree!=null)DOSE_CEIL_FREE=sv.ceilFree;if(sv.floor!=null)DOSE_FLOOR=sv.floor;}
+         var cb=full.methods.carbonation;if(cb&&cb.co2PerBar!=null)CO2_GL_PER_BAR=cb.co2PerBar;}
        normalizeAll();
      } else { cloudLoadFailed(); }
      refreshSavedDropdown();render();
