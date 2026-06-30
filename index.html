@@ -43,6 +43,12 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--ink);ma
 .crow.done .cname{text-decoration:line-through;color:var(--grey);}
 .crow.done .cdose{color:var(--grey);}
 .toolrow{display:flex;gap:10px;align-items:center;padding:14px 18px 4px;}
+.batchrow{display:flex;align-items:center;gap:8px;padding:14px 18px 0;font-size:16px;font-weight:700;}
+.batchrow input{font-family:inherit;font-size:19px;font-weight:700;width:78px;border:2px solid var(--line);padding:7px 8px;text-align:center;background:#fff;}
+.batchnote{font-size:11px;color:var(--grey);font-weight:400;}
+.cdose-wrap{margin-left:auto;text-align:right;}
+.cdose-wrap .cdose{margin-left:0;}
+.cdose-wrap .cset{text-align:right;}
 .progress{font-size:14px;color:var(--grey);}
 .btn{font-family:inherit;font-size:14px;border:2px solid var(--line);background:#fff;padding:8px 14px;cursor:pointer;font-weight:700;}
 .btn:active{background:var(--ink);color:#fff;}
@@ -127,6 +133,17 @@ function getTicks(r){try{return JSON.parse(localStorage.getItem(tickKey(r))||'{}
 function setTick(r,key,on){var t=getTicks(r);if(on)t[key]=1;else delete t[key];try{localStorage.setItem(tickKey(r),JSON.stringify(t));}catch(e){}}
 function clearTicks(r){try{localStorage.removeItem(tickKey(r));}catch(e){}}
 
+/* ---- batch size: local per drink, default 1 L ---- */
+function batchKey(r){return 'es-brew-batch:'+(r.id||r.name);}
+function getBatch(r){try{var v=parseFloat(localStorage.getItem(batchKey(r)));return (v>0)?v:1;}catch(e){return 1;}}
+function setBatchVal(id,val){var r=findRecipe(id);if(!r)return;var n=parseFloat(val);if(!(n>0))n=1;try{localStorage.setItem(batchKey(r),String(n));}catch(e){}render();}
+function fmtAmount(g){
+  if(g>=1000){var kg=g/1000;return (Math.round(kg*100)/100)+' kg';}
+  if(g>=100)return Math.round(g)+' g';
+  if(g>=10)return (Math.round(g*10)/10)+' g';
+  return (Math.round(g*100)/100)+' g';
+}
+
 /* ---- load ---- */
 function loadBin(manual){
   document.getElementById('status').textContent='Loading from cloud…';
@@ -183,6 +200,7 @@ function renderBrew(app){
   if(!r){go('home');return;}
   var items=latestItems(r);
   var ticks=getTicks(r);
+  var batch=getBatch(r);
   // group by method then by setting signature, preserving PREP order
   var groups=[];var byMethod={};
   items.forEach(function(it,idx){
@@ -200,11 +218,17 @@ function renderBrew(app){
     var rows=g.rows.map(function(o){
       var it=o.it,idx=o.idx,key=itemKey(it,idx),on=!!ticks[key];
       var setTxt=rowSetting(it);
-      var dose=(it.method==='Carbonation')?('\u2248'+(CO2_GL_PER_BAR*(it.set||0)).toFixed(1)+' g/L'):((it.dose!=null?it.dose:'')+' g/L');
+      var doseHtml;
+      if(it.method==='Carbonation'){
+        doseHtml='<div class="cdose">\u2248'+(CO2_GL_PER_BAR*(it.set||0)).toFixed(1)+' g/L</div>';
+      } else {
+        var perL=(it.dose!=null?it.dose:0);
+        doseHtml='<div class="cdose-wrap"><div class="cdose">'+esc(fmtAmount(perL*batch))+'</div><div class="cset">'+perL+' g/L</div></div>';
+      }
       return '<div class="crow'+(on?' done':'')+'" onclick="toggle(\''+esc(view.id)+'\',\''+esc(key)+'\')">'+
         '<div class="cbox">'+(on?'\u2713':'')+'</div>'+
         '<div><div class="cname">'+esc(it.name)+'</div>'+(setTxt?'<div class="cset">'+esc(setTxt)+'</div>':'')+'</div>'+
-        '<div class="cdose">'+esc(dose)+'</div></div>';
+        doseHtml+'</div>';
     }).join('');
     return '<div class="bhdr">'+esc(batchHeader(g.method,g.sample))+'</div>'+rows;
   }).join('');
@@ -218,6 +242,7 @@ function renderBrew(app){
     '<div class="brewtitle">'+esc(r.name)+'</div>'+
     '<div class="brewmeta">v'+latestVersion(r)+' · '+fmtDate(latestTs(r))+'</div>'+
     '<span class="readonly-tag">read-only · tick as you go</span>'+
+    '<div class="batchrow">Batch <input type="number" step="0.5" min="0.1" value="'+batch+'" onchange="setBatchVal(\''+esc(view.id)+'\',this.value)"> L <span class="batchnote">amounts scale to your volume</span></div>'+
     '<div class="toolrow"><span class="progress">'+done+' / '+total+' done</span>'+
       '<button class="btn" style="margin-left:auto;" onclick="resetTicks(\''+esc(view.id)+'\')">Reset checklist</button></div>'+
     checklist+
